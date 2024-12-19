@@ -227,3 +227,107 @@ def delete_jabatan(id):
     else:
         flash('Error: Unable to connect to the database.', 'danger')
     return redirect(url_for('routes.jabatan'))
+
+# TABLE PENGURUS
+@routes.route('/pengurus')
+def pengurus():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
+    conn = create_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''SELECT id_anggota, id_jabatan
+                               FROM Pengurus
+                               ORDER BY id_anggota
+                               OFFSET ? ROWS FETCH NEXT ? ROWS ONLY''', (offset, per_page))
+            table = cursor.fetchall()
+            cursor.execute('SELECT COUNT(*) FROM Pengurus')
+            total_count = cursor.fetchone()[0]
+            total_pages = (total_count + per_page - 1) // per_page
+            return render_template('pengurus.html', table=table, total_pages=total_pages, current_page=page)
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+    else:
+        flash('Failed to connect to the database', 'danger')
+        return render_template('pengurus.html', table=None)
+
+@routes.route('/pengurus/create', methods=['GET', 'POST'])
+def create_pengurus():
+    if request.method == 'POST':
+        pengurus_data = {
+            'id_anggota': request.form['id_anggota'],
+            'id_jabatan': request.form['id_jabatan'],
+        }
+        conn = create_connection()
+        if conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('''INSERT INTO Pengurus (id_anggota, id_jabatan)
+                                   VALUES (?, ?)''', 
+                                   (pengurus_data['id_anggota'], pengurus_data['id_jabatan']))
+                conn.commit()
+                flash('Pengurus added successfully!', 'success')
+                return redirect(url_for('routes.pengurus'))
+            except Exception as e:
+                flash(f'Error: {str(e)}', 'danger')
+            finally:
+                cursor.close()
+                conn.close()
+
+    return render_template('createPengurus.html')
+
+@routes.route('/pengurus/update/<id>', methods=['GET', 'POST'])
+def update_pengurus(id):
+    conn = create_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            if request.method == 'POST':
+                updated_data = {
+                    'id_jabatan': request.form['id_jabatan'],
+                }
+                cursor.execute('''UPDATE Pengurus
+                                  SET id_jabatan = ?
+                                  WHERE id_anggota = ?''', 
+                                  (updated_data['id_jabatan'], id))
+                conn.commit()
+                flash('Pengurus updated successfully!', 'success')
+                return redirect(url_for('routes.pengurus'))
+
+            cursor.execute('SELECT id_anggota, id_jabatan FROM pengurus WHERE id_anggota = ?', (id,))
+            table = cursor.fetchone()
+            if not table:
+                flash('Pengurus not found!', 'danger')
+                return redirect(url_for('routes.pengurus'))
+            return render_template('editPengurus.html', table=dict(zip(['id_anggota', 'id_jabatan'], table)))
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+    else:
+        flash('Error: Unable to connect to the database.', 'danger')
+        return redirect(url_for('routes.pengurus'))
+
+@routes.route('/pengurus/delete/<id>', methods=['POST'])
+def delete_pengurus(id):
+    conn = create_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM Pengurus WHERE id_anggota = ?', (id,))
+            conn.commit()
+            flash('Pengurus deleted successfully!', 'success')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+    else:
+        flash('Error: Unable to connect to the database.', 'danger')
+    return redirect(url_for('routes.pengurus'))
