@@ -6,7 +6,7 @@ CREATE TABLE Jabatan (
 
 -- Tabel Anggota
 CREATE TABLE Anggota (
-    id VARCHAR(50) PRIMARY KEY,
+    id_anggota VARCHAR(50) PRIMARY KEY,
     nama VARCHAR(100) NOT NULL,
     alamat VARCHAR(255) NOT NULL,
     no_identitas VARCHAR(50) NOT NULL UNIQUE,

@@ -24,7 +24,7 @@
                             <a class="nav-link" href="/">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/{{ table_name }}">{{ table_name }}</a>
+                            <a class="nav-link" href="{{ table_name }}">{{ table_name }}</a>
                         </li>
                     </ul>
                 </div>
@@ -77,27 +77,26 @@
                                 {% endfor %}
                                 <td>
                                     <!-- Update Button -->
-                                    <a href="{{ url_for('routes.' + table_name + '_update', id=item.id) }}" class="btn btn-warning btn-sm">Update</a>
+                                    <a href="{{ url_for('routes.' + table_name + '_update', id=item[fields[0]]) }}" class="btn btn-warning btn-sm">Update</a>
                                     <!-- Delete Button with Modal -->
-                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ item.id }}">
+                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ item[fields[0]] }}">
                                         Delete
                                     </button>
 
                                     <!-- Modal -->
-                                    <div class="modal fade" id="deleteModal{{ item.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ item.id }}" aria-hidden="true">
+                                    <div class="modal fade" id="deleteModal{{ item[fields[0]] }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ item[fields[0]] }}" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
-                                                    <h5 class="modal-title" id="deleteModalLabel{{ item.id }}">Konfirmasi Hapus</h5>
+                                                    <h5 class="modal-title" id="deleteModalLabel{{ item[fields[0]] }}">Konfirmasi Hapus</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    Apakah Anda yakin ingin menghapus {{ table_name }} dengan ID <strong>{{ item.id }}</strong>?
+                                                    Apakah Anda yakin ingin menghapus {{ table_name }} dengan ID <strong>{{ item[fields[0]] }}</strong>?
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                                    ```html
-                                                    <form action="{{ url_for('routes.' + table_name + '_delete', id=item.id) }}" method="POST" class="d-inline">
+                                                    <form action="{{ url_for('routes.' + table_name + '_delete', id=item[fields[0]]) }}" method="POST" class="d-inline">
                                                         <button type="submit" class="btn btn-danger">Hapus</button>
                                                     </form>
                                                 </div>

@@ -33,30 +33,30 @@ def create_route(table_name, fields):
             data = {field: request.form[field] for field in fields}
             execute_query(f'INSERT INTO {table_name} ({", ".join(fields)}) VALUES ({", ".join(["?"] * len(fields))})', tuple(data.values()))
             flash(f'{table_name.capitalize()} added successfully!', 'success')
-            return redirect(url_for(f'routes.{table_name}'))
-        return render_template('update.html', action='create', table_name=table_name, fields=fields)
+            return redirect(url_for(f'routes.{table_name}_list'))
+        return render_template('update.html', action='create', table_name=table_name, fields=fields, is_new=True)
     
 def update_route(table_name, fields):
     @routes.route(f'/{table_name}/update/<id>', methods=['GET', 'POST'], endpoint=f'{table_name}_update')
     def update_item(id):
         if request.method == 'POST':
-            data = {field: request.form[field] for field in fields}
-            execute_query(f'UPDATE {table_name} SET {", ".join([f"{field} = ?" for field in fields])} WHERE id = ?', (*data.values(), id))
+            data = {field: request.form[field] for field in fields[1:]}
+            execute_query(f'UPDATE {table_name} SET {", ".join([f"{field} = ?" for field in fields[1:]])} WHERE {fields[0]} = ?', (*data.values(), id))
             flash(f'{table_name.capitalize()} updated successfully!', 'success')
-            return redirect(url_for(f'routes.{table_name}'))
+            return redirect(url_for(f'routes.{table_name}_list'))
 
-        item = execute_query(f'SELECT * FROM {table_name} WHERE id = ?', (id,), fetchone=True)
+        item = execute_query(f'SELECT * FROM {table_name} WHERE {fields[0]} = ?', (id,), fetchone=True)
         if not item:
             flash(f'{table_name.capitalize()} not found!', 'danger')
-            return redirect(url_for(f'routes.{table_name}'))
+            return redirect(url_for(f'routes.{table_name}_list'))
         return render_template('update.html', action='update', table_name=table_name, fields=fields, table=dict(zip(fields, item)))
-    
+     
 def delete_route(table_name):
     @routes.route(f'/{table_name}/delete/<id>', methods=['POST'], endpoint=f'{table_name}_delete')
     def delete_item(id):
-        execute_query(f'DELETE FROM {table_name} WHERE id = ?', (id,))
-        flash(f'{table_name.capitalize()} deleted successfully!', 'success')
-        return redirect(url_for(f'routes.{table_name}'))
+        execute_query(f'DELETE FROM {table_name} WHERE {fields[0]} = ?', (id,))
+        flash(f'{table_name.capitalize()} with ID {fields[0]} deleted successfully!', 'success')
+        return redirect(url_for(f'routes.{table_name}_list'))
 
 def list_route(table_name, fields):
     @routes.route(f'/{table_name}', endpoint=f'{table_name}_list')
