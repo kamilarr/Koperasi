@@ -9,12 +9,11 @@ def execute_query(query, params=(), fetchone=False):
         cursor = conn.cursor()
         try:
             cursor.execute(query, params)
-            if fetchone:
-                return cursor.fetchone() 
-            else:
-                if query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
-                    conn.commit()  
-                return cursor.fetchall()
+            if query.strip().upper().startswith("SELECT"):
+                return cursor.fetchone() if fetchone else cursor.fetchall()
+            elif query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+                conn.commit()
+                return True 
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')  
             return None  
