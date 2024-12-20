@@ -4,330 +4,94 @@ from connect import create_connection
 # Create a blueprint for modular routing
 routes = Blueprint('routes', __name__)
 
+# Generic function to handle database operations
+def execute_query(query, params=(), fetchone=False):
+    conn = create_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, params)
+            if fetchone:
+                return cursor.fetchone()
+            else:
+                conn.commit()
+                return cursor.fetchall()
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+    else:
+        flash('Failed to connect to the database', 'danger')
+    return None
+
+# Generic CRUD routes
+def create_route(table_name, fields):
+    @routes.route(f'/{table_name}/create', methods=['GET', 'POST'], endpoint=f'{table_name}_create')
+    def create_item():
+        if request.method == 'POST':
+            data = {field: request.form[field] for field in fields}
+            execute_query(f'INSERT INTO {table_name} ({", ".join(fields)}) VALUES ({", ".join(["?"] * len(fields))})', tuple(data.values()))
+            flash(f'{table_name.capitalize()} added successfully!', 'success')
+            return redirect(url_for(f'routes.{table_name}'))
+        return render_template(f'create{table_name.capitalize()}.html')
+
+def update_route(table_name, fields):
+    @routes.route(f'/{table_name}/update/<id>', methods=['GET', 'POST'], endpoint=f'{table_name}_update')
+    def update_item(id):
+        if request.method == 'POST':
+            data = {field: request.form[field] for field in fields}
+            execute_query(f'UPDATE {table_name} SET {", ".join([f"{field} = ?" for field in fields])} WHERE id = ?', (*data.values(), id))
+            flash(f'{table_name.capitalize()} updated successfully!', 'success')
+            return redirect(url_for(f'routes.{table_name}'))
+
+        item = execute_query(f'SELECT * FROM {table_name} WHERE id = ?', (id,), fetchone=True)
+        if not item:
+            flash(f'{table_name.capitalize()} not found!', 'danger')
+            return redirect(url_for(f'routes.{table_name}'))
+        return render_template(f'edit{table_name.capitalize()}.html', table=dict(zip(fields, item)))
+
+def delete_route(table_name):
+    @routes.route(f'/{table_name}/delete/<id>', methods=['POST'], endpoint=f'{table_name}_delete')
+    def delete_item(id):
+        execute_query(f'DELETE FROM {table_name} WHERE id = ?', (id,))
+        flash(f'{table_name.capitalize()} deleted successfully!', 'success')
+        return redirect(url_for(f'routes.{table_name}'))
+
+def list_route(table_name, fields):
+    @routes.route(f'/{table_name}', endpoint=f'{table_name}_list')
+    def list_items():
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        offset = (page - 1) * per_page
+        items = execute_query(f'SELECT * FROM {table_name} ORDER BY id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', (offset, per_page))
+        total_count = execute_query(f'SELECT COUNT(*) FROM {table_name}')[0][0]
+        total_pages = (total_count + per_page - 1) // per_page
+        return render_template(f'{table_name}.html', table=items, total_pages=total_pages, current_page=page)
+
+# Define your tables and fields
+tables = {
+    'Anggota': ['id_anggota', 'nama', 'alamat', 'no_identitas', 'tgl_pendaftaran', 'status_keanggotaan'],
+    'Jabatan': ['id_jabatan', 'jabatan'],
+    'Pengurus': ['id_anggota', 'id_jabatan'],
+    'Transaksi': ['id_transaksi', 'id_anggota', 'jumlah', 'jenis_transaksi', 'tanggal_transaksi'],
+    'Simpanan': ['id_simpanan', 'id_anggota', 'jumlah', 'tgl_pembukaan', 'jenis_simpanan', 'saldo'],
+    'Pinjaman': ['id_pinjaman', 'id_anggota', 'jenis_pinjaman', 'saldo', 'bunga', 'jadwal_pembayaran', 'status_pinjaman', 'jumlah'],
+    'Pinjaman_Usaha': ['id_pinjaman', 'id_transaksi', 'jenis_usaha'],
+    'Pinjaman_Konsumsi': ['id_pinjaman', 'id_transaksi', 'jenis_konsumsi'],
+    'SHU': ['id_shu', 'id_transaksi', 'kontribusi', 'tahun'],
+    'Simpanan_Pokok': ['id_simpanan', 'id_transaksi', 'status'],
+    'Simpanan_Bebas': ['id_simpanan', 'id_transaksi', 'bunga'],
+    'Simpanan_Wajib': ['id_simpanan', 'id_transaksi', 'bulan_pembayaran']
+}
+
+# Register routes for each table
+for table_name, fields in tables.items():
+    list_route(table_name, fields)
+    create_route(table_name, fields)
+    update_route(table_name, fields)
+    delete_route(table_name)
+
 @routes.route('/')
 def index():
-    return render_template('home.html')
-
-@routes.route('/anggota')
-def anggota():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10  # Number of items per page
-    offset = (page - 1) * per_page
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''SELECT id, nama, alamat, no_identitas, tgl_pendaftaran, status_keanggotaan
-                               FROM Anggota
-                               ORDER BY id
-                               OFFSET ? ROWS FETCH NEXT ? ROWS ONLY''', (offset, per_page))
-            table = cursor.fetchall()
-            cursor.execute('SELECT COUNT(*) FROM Anggota')
-            total_count = cursor.fetchone()[0]
-            total_pages = (total_count + per_page - 1) // per_page
-            return render_template('anggota.html', table=table, total_pages=total_pages, current_page=page)
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Failed to connect to the database', 'danger')
-        return render_template('anggota.html', table=None)
-
-@routes.route('/anggota/create', methods=['GET', 'POST'])
-def create_anggota():
-    if request.method == 'POST':
-        anggota_data = {
-            'id': request.form['id'],
-            'nama': request.form['nama'],
-            'alamat': request.form['alamat'],
-            'no_identitas': request.form['no_identitas'],
-            'tgl_pendaftaran': request.form['tgl_pendaftaran'],
-            'status_keanggotaan': request.form['status_keanggotaan']
-        }
-        conn = create_connection()
-        if conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('''INSERT INTO Anggota (id, nama, alamat, no_identitas, tgl_pendaftaran, status_keanggotaan)
-                                   VALUES (?, ?, ?, ?, ?, ?)''', 
-                                   (anggota_data['id'], anggota_data['nama'], anggota_data['alamat'],
-                                    anggota_data['no_identitas'], anggota_data['tgl_pendaftaran'], anggota_data['status_keanggotaan']))
-                conn.commit()
-                flash('Anggota added successfully!', 'success')
-                return redirect(url_for('routes.anggota'))
-            except Exception as e:
-                flash(f'Error: {str(e)}', 'danger')
-            finally:
-                cursor.close()
-                conn.close()
-
-    return render_template('createAnggota.html')
-
-@routes.route('/anggota/update/<id>', methods=['GET', 'POST'])
-def update_anggota(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            if request.method == 'POST':
-                updated_data = {
-                    'nama': request.form['nama'],
-                    'alamat': request.form['alamat'],
-                    'no_identitas': request.form['no_identitas'],
-                    'tgl_pendaftaran': request.form['tgl_pendaftaran'],
-                    'status_keanggotaan': request.form['status_keanggotaan']
-                }
-                cursor.execute('''UPDATE Anggota
-                                  SET nama = ?, alamat = ?, no_identitas = ?, tgl_pendaftaran = ?, status_keanggotaan = ?
-                                  WHERE id = ?''', 
-                                  (updated_data['nama'], updated_data['alamat'], updated_data['no_identitas'],
-                                   updated_data['tgl_pendaftaran'], updated_data['status_keanggotaan'], id))
-                conn.commit()
-                flash('Anggota updated successfully!', 'success')
-                return redirect(url_for('routes.anggota'))
-
-            cursor.execute('SELECT id, nama, alamat, no_identitas, tgl_pendaftaran, status_keanggotaan FROM anggota WHERE id = ?', (id,))
-            table = cursor.fetchone()
-            if not table:
-                flash('Table not found!', 'danger')
-                return redirect(url_for('routes.anggota'))
-            return render_template('editAnggota.html', table=dict(zip(['id', 'nama', 'alamat', 'no_identitas', 'tgl_pendaftaran', 'status_keanggotaan'], table)))
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-        return redirect(url_for('routes.anggota'))
-
-@routes.route('/anggota/delete/<id>', methods=['POST'])
-def delete_anggota(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('DELETE FROM Anggota WHERE id = ?', (id,))
-            conn.commit()
-            flash('Anggota deleted successfully!', 'success')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-    return redirect(url_for('routes.anggota'))
-
-# TABLE JABATAN
-@routes.route('/jabatan')
-def jabatan():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10  # Number of items per page
-    offset = (page - 1) * per_page
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''SELECT id_jabatan, jabatan
-                               FROM Jabatan
-                               ORDER BY id_jabatan
-                               OFFSET ? ROWS FETCH NEXT ? ROWS ONLY''', (offset, per_page))
-            table = cursor.fetchall()
-            cursor.execute('SELECT COUNT(*) FROM Jabatan')
-            total_count = cursor.fetchone()[0]
-            total_pages = (total_count + per_page - 1) // per_page
-            return render_template('jabatan.html', table=table, total_pages=total_pages, current_page=page)
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Failed to connect to the database', 'danger')
-        return render_template('jabatan.html', table=None)
-    
-@routes.route('/jabatan/create', methods=['GET', 'POST'])
-def create_jabatan():
-    if request.method == 'POST':
-        jabatan_data = {
-            'id_jabatan': request.form['id_jabatan'],
-            'jabatan': request.form['jabatan']
-        }
-        conn = create_connection()
-        if conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('''INSERT INTO Jabatan (id_jabatan, jabatan)
-                                   VALUES (?, ?)''', 
-                                   (jabatan_data['id_jabatan'], jabatan_data['jabatan']))
-                conn.commit()
-                flash('Jabatan added successfully!', 'success')
-                return redirect(url_for('routes.jabatan'))
-            except Exception as e:
-                flash(f'Error: {str(e)}', 'danger')
-            finally:
-                cursor.close()
-                conn.close()
-    return render_template('createJabatan.html')
-
-@routes.route('/jabatan/update/<id>', methods=['GET', 'POST'])
-def update_jabatan(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            if request.method == 'POST':
-                updated_data = {
-                    'jabatan': request.form['jabatan'],
-                }
-                
-                cursor.execute('''UPDATE Jabatan
-                                  SET jabatan = ?
-                                  WHERE id_jabatan = ?''', 
-                                  updated_data['jabatan'], id)
-                conn.commit()
-
-                flash('Jabatan updated successfully!', 'success')
-                return redirect(url_for('routes.jabatan'))
-
-            cursor.execute('SELECT id_jabatan, jabatan FROM jabatan WHERE id_jabatan = ?', (id,))
-            table = cursor.fetchone()
-            if not table:
-                flash('Jabatan not found!', 'danger')
-                return redirect(url_for('routes.jabatan'))
-            
-            return render_template('editJabatan.html', table=dict(zip(['id_jabatan', 'jabatan'], table)))
-
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-        return redirect(url_for('routes.jabatan'))
-
-@routes.route('/jabatan/delete/<id>', methods=['POST'])
-def delete_jabatan(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('DELETE FROM Jabatan WHERE id_jabatan = ?', (id,))
-            conn.commit()
-            flash('Jabatan deleted successfully!', 'success')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-    return redirect(url_for('routes.jabatan'))
-
-# TABLE PENGURUS
-@routes.route('/pengurus')
-def pengurus():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    offset = (page - 1) * per_page
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''SELECT id_anggota, id_jabatan
-                               FROM Pengurus
-                               ORDER BY id_anggota
-                               OFFSET ? ROWS FETCH NEXT ? ROWS ONLY''', (offset, per_page))
-            table = cursor.fetchall()
-            cursor.execute('SELECT COUNT(*) FROM Pengurus')
-            total_count = cursor.fetchone()[0]
-            total_pages = (total_count + per_page - 1) // per_page
-            return render_template('pengurus.html', table=table, total_pages=total_pages, current_page=page)
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Failed to connect to the database', 'danger')
-        return render_template('pengurus.html', table=None)
-
-@routes.route('/pengurus/create', methods=['GET', 'POST'])
-def create_pengurus():
-    if request.method == 'POST':
-        pengurus_data = {
-            'id_anggota': request.form['id_anggota'],
-            'id_jabatan': request.form['id_jabatan'],
-        }
-        conn = create_connection()
-        if conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('''INSERT INTO Pengurus (id_anggota, id_jabatan)
-                                   VALUES (?, ?)''', 
-                                   (pengurus_data['id_anggota'], pengurus_data['id_jabatan']))
-                conn.commit()
-                flash('Pengurus added successfully!', 'success')
-                return redirect(url_for('routes.pengurus'))
-            except Exception as e:
-                flash(f'Error: {str(e)}', 'danger')
-            finally:
-                cursor.close()
-                conn.close()
-
-    return render_template('createPengurus.html')
-
-@routes.route('/pengurus/update/<id>', methods=['GET', 'POST'])
-def update_pengurus(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            if request.method == 'POST':
-                updated_data = {
-                    'id_jabatan': request.form['id_jabatan'],
-                }
-                cursor.execute('''UPDATE Pengurus
-                                  SET id_jabatan = ?
-                                  WHERE id_anggota = ?''', 
-                                  (updated_data['id_jabatan'], id))
-                conn.commit()
-                flash('Pengurus updated successfully!', 'success')
-                return redirect(url_for('routes.pengurus'))
-
-            cursor.execute('SELECT id_anggota, id_jabatan FROM pengurus WHERE id_anggota = ?', (id,))
-            table = cursor.fetchone()
-            if not table:
-                flash('Pengurus not found!', 'danger')
-                return redirect(url_for('routes.pengurus'))
-            return render_template('editPengurus.html', table=dict(zip(['id_anggota', 'id_jabatan'], table)))
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-        return redirect(url_for('routes.pengurus'))
-
-@routes.route('/pengurus/delete/<id>', methods=['POST'])
-def delete_pengurus(id):
-    conn = create_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute('DELETE FROM Pengurus WHERE id_anggota = ?', (id,))
-            conn.commit()
-            flash('Pengurus deleted successfully!', 'success')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
-    else:
-        flash('Error: Unable to connect to the database.', 'danger')
-    return redirect(url_for('routes.pengurus'))
+    return render_template('home.html', tables=tables)
