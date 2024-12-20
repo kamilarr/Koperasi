@@ -14,7 +14,7 @@
     <header>
       <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
         <div class="container-fluid">
-          <a class="navbar-brand" href="/home">Koperasi</a>
+          <a class="navbar-brand" href="/">Koperasi</a>
         </div>
       </nav>
     </header>
@@ -31,7 +31,7 @@
               <div class="card-body">
                 <h5 class="card-title text-primary">{{ table_name }}</h5>
                 <p class="card-text">Jelajahi informasi detail tentang tabel {{ table_name }} dari Koperasi Simpan Pinjam Kelompok 6</p>
-                <a href="/{{ table_name.lower() }}" class="btn btn-primary d-block mx-auto">Lihat Tabel {{ table_name }}</a>
+                <a href="{{ table_name }}" class="btn btn-primary d-block mx-auto">Lihat Tabel {{ table_name }}</a>
               </div>
             </div>
           </div>

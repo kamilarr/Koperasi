@@ -18,9 +18,10 @@ def execute_query(query, params=(), fetchone=False):
                 return cursor.fetchall()
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
+            return None  # Return None or handle the error as needed
         finally:
-            cursor.close()
-            conn.close()
+            cursor.close()  # Ensure the cursor is closed
+            conn.close()    # Ensure the connection is closed
     else:
         flash('Failed to connect to the database', 'danger')
     return None
@@ -34,8 +35,8 @@ def create_route(table_name, fields):
             execute_query(f'INSERT INTO {table_name} ({", ".join(fields)}) VALUES ({", ".join(["?"] * len(fields))})', tuple(data.values()))
             flash(f'{table_name.capitalize()} added successfully!', 'success')
             return redirect(url_for(f'routes.{table_name}'))
-        return render_template(f'create{table_name.capitalize()}.html')
-
+        return render_template('update.html', action='create', table_name=table_name, fields=fields)
+    
 def update_route(table_name, fields):
     @routes.route(f'/{table_name}/update/<id>', methods=['GET', 'POST'], endpoint=f'{table_name}_update')
     def update_item(id):
@@ -49,8 +50,8 @@ def update_route(table_name, fields):
         if not item:
             flash(f'{table_name.capitalize()} not found!', 'danger')
             return redirect(url_for(f'routes.{table_name}'))
-        return render_template(f'edit{table_name.capitalize()}.html', table=dict(zip(fields, item)))
-
+        return render_template('update.html', action='update', table_name=table_name, fields=fields, table=dict(zip(fields, item)))
+    
 def delete_route(table_name):
     @routes.route(f'/{table_name}/delete/<id>', methods=['POST'], endpoint=f'{table_name}_delete')
     def delete_item(id):
@@ -64,10 +65,16 @@ def list_route(table_name, fields):
         page = request.args.get('page', 1, type=int)
         per_page = 10
         offset = (page - 1) * per_page
-        items = execute_query(f'SELECT * FROM {table_name} ORDER BY id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', (offset, per_page))
-        total_count = execute_query(f'SELECT COUNT(*) FROM {table_name}')[0][0]
+        items = execute_query(f'SELECT * FROM {table_name} ORDER BY {fields[0]} OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', (offset, per_page))
+        if items is None:
+            items = []  # or handle the error as needed
+        total_count_result = execute_query(f'SELECT COUNT(*) FROM {table_name}')
+        if total_count_result is not None:
+            total_count = total_count_result[0][0]
+        else:
+            total_count = 0  # or handle the error as needed
         total_pages = (total_count + per_page - 1) // per_page
-        return render_template(f'{table_name}.html', table=items, total_pages=total_pages, current_page=page)
+        return render_template('read.html', table_name=table_name, fields=fields, table=items, total_pages=total_pages, current_page=page)
 
 # Define your tables and fields
 tables = {
@@ -77,12 +84,12 @@ tables = {
     'Transaksi': ['id_transaksi', 'id_anggota', 'jumlah', 'jenis_transaksi', 'tanggal_transaksi'],
     'Simpanan': ['id_simpanan', 'id_anggota', 'jumlah', 'tgl_pembukaan', 'jenis_simpanan', 'saldo'],
     'Pinjaman': ['id_pinjaman', 'id_anggota', 'jenis_pinjaman', 'saldo', 'bunga', 'jadwal_pembayaran', 'status_pinjaman', 'jumlah'],
-    'Pinjaman_Usaha': ['id_pinjaman', 'id_transaksi', 'jenis_usaha'],
-    'Pinjaman_Konsumsi': ['id_pinjaman', 'id_transaksi', 'jenis_konsumsi'],
+    'Pinjaman Usaha': ['id_pinjaman', 'id_transaksi', 'jenis_usaha'],
+    'Pinjaman Konsumsi': ['id_pinjaman', 'id_transaksi', 'jenis_konsumsi'],
     'SHU': ['id_shu', 'id_transaksi', 'kontribusi', 'tahun'],
-    'Simpanan_Pokok': ['id_simpanan', 'id_transaksi', 'status'],
-    'Simpanan_Bebas': ['id_simpanan', 'id_transaksi', 'bunga'],
-    'Simpanan_Wajib': ['id_simpanan', 'id_transaksi', 'bulan_pembayaran']
+    'Simpanan Pokok': ['id_simpanan', 'id_transaksi', 'status'],
+    'Simpanan Bebas': ['id_simpanan', 'id_transaksi', 'bunga'],
+    'Simpanan Wajib': ['id_simpanan', 'id_transaksi', 'bulan_pembayaran']
 }
 
 # Register routes for each table
