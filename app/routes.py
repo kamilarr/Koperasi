@@ -51,11 +51,11 @@ def update_route(table_name, fields):
             return redirect(url_for(f'routes.{table_name}_list'))
         return render_template('update.html', action='update', table_name=table_name, fields=fields, table=dict(zip(fields, item)))
      
-def delete_route(table_name):
+def delete_route(table_name, fields):
     @routes.route(f'/{table_name}/delete/<id>', methods=['POST'], endpoint=f'{table_name}_delete')
     def delete_item(id):
         execute_query(f'DELETE FROM {table_name} WHERE {fields[0]} = ?', (id,))
-        flash(f'{table_name.capitalize()} with ID {fields[0]} deleted successfully!', 'success')
+        flash(f'{table_name.capitalize()} with ID {id} deleted successfully!', 'success')
         return redirect(url_for(f'routes.{table_name}_list'))
 
 def list_route(table_name, fields):
@@ -96,7 +96,7 @@ for table_name, fields in tables.items():
     list_route(table_name, fields)
     create_route(table_name, fields)
     update_route(table_name, fields)
-    delete_route(table_name)
+    delete_route(table_name, fields)
 
 @routes.route('/')
 def index():
