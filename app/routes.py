@@ -1,10 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from connect import create_connection
 
-# Create a blueprint for modular routing
 routes = Blueprint('routes', __name__)
 
-# Generic function to handle database operations
 def execute_query(query, params=(), fetchone=False):
     conn = create_connection()
     if conn:
@@ -12,16 +10,17 @@ def execute_query(query, params=(), fetchone=False):
         try:
             cursor.execute(query, params)
             if fetchone:
-                return cursor.fetchone()
+                return cursor.fetchone() 
             else:
-                conn.commit()
+                if query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+                    conn.commit()  
                 return cursor.fetchall()
         except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-            return None  # Return None or handle the error as needed
+            flash(f'Error: {str(e)}', 'danger')  
+            return None  
         finally:
-            cursor.close()  # Ensure the cursor is closed
-            conn.close()    # Ensure the connection is closed
+            cursor.close() 
+            conn.close()    
     else:
         flash('Failed to connect to the database', 'danger')
     return None
@@ -67,12 +66,12 @@ def list_route(table_name, fields):
         offset = (page - 1) * per_page
         items = execute_query(f'SELECT * FROM {table_name} ORDER BY {fields[0]} OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', (offset, per_page))
         if items is None:
-            items = []  # or handle the error as needed
+            items = []  
         total_count_result = execute_query(f'SELECT COUNT(*) FROM {table_name}')
         if total_count_result is not None:
             total_count = total_count_result[0][0]
         else:
-            total_count = 0  # or handle the error as needed
+            total_count = 0  
         total_pages = (total_count + per_page - 1) // per_page
         return render_template('read.html', table_name=table_name, fields=fields, table=items, total_pages=total_pages, current_page=page)
 
