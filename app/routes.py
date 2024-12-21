@@ -82,12 +82,12 @@ tables = {
     'Transaksi': ['id_transaksi', 'id_anggota', 'jumlah', 'jenis_transaksi', 'tanggal_transaksi'],
     'Simpanan': ['id_simpanan', 'id_anggota', 'jumlah', 'tgl_pembukaan', 'jenis_simpanan', 'saldo'],
     'Pinjaman': ['id_pinjaman', 'id_anggota', 'jenis_pinjaman', 'saldo', 'bunga', 'jadwal_pembayaran', 'status_pinjaman', 'jumlah'],
-    'Pinjaman Usaha': ['id_pinjaman', 'id_transaksi', 'jenis_usaha'],
-    'Pinjaman Konsumsi': ['id_pinjaman', 'id_transaksi', 'jenis_konsumsi'],
+    'Pinjaman_Usaha': ['id_pinjaman', 'id_transaksi', 'jenis_usaha'],
+    'Pinjaman_Konsumsi': ['id_pinjaman', 'id_transaksi', 'jenis_konsumsi'],
     'SHU': ['id_shu', 'id_transaksi', 'kontribusi', 'tahun'],
-    'Simpanan Pokok': ['id_simpanan', 'id_transaksi', 'status'],
-    'Simpanan Bebas': ['id_simpanan', 'id_transaksi', 'bunga'],
-    'Simpanan Wajib': ['id_simpanan', 'id_transaksi', 'bulan_pembayaran']
+    'Simpanan_Pokok': ['id_simpanan', 'id_transaksi', 'status'],
+    'Simpanan_Bebas': ['id_simpanan', 'id_transaksi', 'bunga'],
+    'Simpanan_Wajib': ['id_simpanan', 'id_transaksi', 'bulan_pembayaran']
 }
 
 # Register routes for each table
