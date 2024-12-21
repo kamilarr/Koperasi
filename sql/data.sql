@@ -1,16 +1,4 @@
 -- Data Koperasi Simpan Pinjam
-DELETE FROM TRANSAKSI;
-DELETE FROM SIMPANAN_WAJIB;
-DELETE FROM SIMPANAN_POKOK;
-DELETE FROM SIMPANAN_BEBAS;
-DELETE FROM SIMPANAN;
-DELETE FROM SHU;
-DELETE FROM PINJAMAN_USAHA;
-DELETE FROM PINJAMAN_KONSUMTIF;
-DELETE FROM PINJAMAN;
-DELETE FROM PENGURUS;
-DELETE FROM JABATAN;
-DELETE FROM ANGGOTA;
 
 -- Anggota
 INSERT INTO Anggota (id_anggota, nama, alamat, no_identitas, tgl_pendaftaran, status_keanggotaan) VALUES
@@ -157,7 +145,7 @@ VALUES
 ('P14', 'T36', 'Warung Makan');
 
 -- Pinjaman Konsumtif
-INSERT INTO Pinjaman_Konsumtif (id_pinjaman, id_transaksi, Jenis_Konsumsi)
+INSERT INTO Pinjaman_Konsumsi (id_pinjaman, id_transaksi, Jenis_Konsumsi)
 VALUES
 ('P02', 'T17', 'Biaya Pendidikan'),
 ('P05', 'T22', 'Kebutuhan Rumah Tangga'),
